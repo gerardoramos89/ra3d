@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>GRTEC WebAR - Coffee 3D</title>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+            "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+        }
+    }
+    </script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+
+        #container {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #container canvas {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            pointer-events: none;
+        }
+
+        #loading {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 25px;
+            background: #000;
+            color: #fff;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        #loading.hidden {
+            display: none;
+        }
+
+        #message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            width: calc(100% - 40px);
+            max-width: 440px;
+            padding: 14px 20px;
+            border-radius: 30px;
+            background: rgba(0,0,0,.72);
+            color: #fff;
+            text-align: center;
+            font-size: 16px;
+            backdrop-filter: blur(6px);
+        }
+
+        #badge {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            padding: 9px 15px;
+            border-radius: 20px;
+            background: rgba(0,0,0,.58);
+            color: rgba(255,255,255,.9);
+            font-size: 12px;
+        }
+
+        .ok {
+            background: rgba(0,90,45,.78) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="loading">
+    ⏳ GRTEC WebAR<br>
+    <small>Cargando realidad aumentada...</small>
+</div>
+
+<div id="container"></div>
+
+<div id="message">
+    📷 Apunta la cámara al marcador de café
+</div>
+
+<div id="badge">
+    GRTEC WebAR • Coffee 3D
+</div>
+
+<script type="module">
+
+    import * as THREE from "three";
+
+    import { GLTFLoader }
+        from "three/addons/loaders/GLTFLoader.js";
+
+    import { MindARThree }
+        from "mindar-image-three";
+
+
+    const container =
+        document.querySelector("#container");
+
+    const loading =
+        document.querySelector("#loading");
+
+    const message =
+        document.querySelector("#message");
+
+
+    /*
+     * MINDAR
+     *
+     * El archivo coffee-marker.mind se genera
+     * usando la imagen marker.png.
+     */
+
+    const mindarThree =
+        new MindARThree({
+            container: container,
+
+            imageTargetSrc:
+                "./assets/coffee-marker.mind",
+
+            uiLoading: "no",
+            uiScanning: "no",
+            uiError: "no"
+        });
+
+
+    const {
+        renderer,
+        scene,
+        camera
+    } = mindarThree;
+
+
+    /*
+     * LUCES
+     */
+
+    const ambientLight =
+        new THREE.AmbientLight(
+            0xffffff,
+            2.2
+        );
+
+    scene.add(ambientLight);
+
+
+    const directionalLight =
+        new THREE.DirectionalLight(
+            0xffffff,
+            3
+        );
+
+    directionalLight.position.set(
+        2,
+        4,
+        3
+    );
+
+    scene.add(directionalLight);
+
+
+    /*
+     * TARGET
+     */
+
+    const anchor =
+        mindarThree.addAnchor(0);
+
+
+    /*
+     * CONTENEDOR DEL MODELO
+     */
+
+    const modelRoot =
+        new THREE.Group();
+
+    modelRoot.visible = false;
+
+    anchor.group.add(
+        modelRoot
+    );
+
+
+    /*
+     * CARGAR GLB
+     */
+
+    const loader =
+        new GLTFLoader();
+
+
+    loader.load(
+        "./assets/Coffee3d.glb",
+
+        (gltf) => {
+
+            const model =
+                gltf.scene;
+
+
+            /*
+             * CENTRAR Y NORMALIZAR
+             * automáticamente el tamaño.
+             */
+
+            const box =
+                new THREE.Box3()
+                    .setFromObject(model);
+
+            const size =
+                box.getSize(
+                    new THREE.Vector3()
+                );
+
+            const center =
+                box.getCenter(
+                    new THREE.Vector3()
+                );
+
+
+            model.position.x =
+                -center.x;
+
+            model.position.y =
+                -center.y;
+
+            model.position.z =
+                -center.z;
+
+
+            const maxDimension =
+                Math.max(
+                    size.x,
+                    size.y,
+                    size.z
+                );
+
+
+            const desiredSize =
+                0.75;
+
+
+            const scale =
+                desiredSize /
+                maxDimension;
+
+
+            model.scale.setScalar(
+                scale
+            );
+
+
+            modelRoot.add(
+                model
+            );
+
+
+            /*
+             * Posición inicial.
+             */
+
+            modelRoot.position.set(
+                0,
+                0.05,
+                0.10
+            );
+
+
+            console.log(
+                "GRTEC: Coffee3d.glb cargado"
+            );
+
+        },
+
+        undefined,
+
+        (error) => {
+
+            console.error(
+                "GRTEC GLB ERROR:",
+                error
+            );
+
+            message.innerHTML =
+                "❌ No se pudo cargar Coffee3d.glb";
+
+        }
+    );
+
+
+    /*
+     * TARGET ENCONTRADO
+     */
+
+    anchor.onTargetFound = () => {
+
+        console.log(
+            "🎯 GRTEC COFFEE TARGET FOUND"
+        );
+
+
+        modelRoot.visible =
+            true;
+
+
+        /*
+         * Animación de entrada.
+         */
+
+        modelRoot.scale.set(
+            0.01,
+            0.01,
+            0.01
+        );
+
+
+        message.innerHTML =
+            "☕ ¡Café reconocido!";
+
+        message.classList.add(
+            "ok"
+        );
+
+    };
+
+
+    /*
+     * TARGET PERDIDO
+     */
+
+    anchor.onTargetLost = () => {
+
+        console.log(
+            "🎯 GRTEC COFFEE TARGET LOST"
+        );
+
+
+        modelRoot.visible =
+            false;
+
+
+        message.innerHTML =
+            "📷 Apunta la cámara al marcador de café";
+
+        message.classList.remove(
+            "ok"
+        );
+
+    };
+
+
+    /*
+     * RELOJ DE ANIMACIÓN
+     */
+
+    const clock =
+        new THREE.Clock();
+
+
+    let currentScale =
+        0;
+
+
+    /*
+     * INICIAR AR
+     */
+
+    async function startAR() {
+
+        try {
+
+            await mindarThree.start();
+
+
+            loading.classList.add(
+                "hidden"
+            );
+
+
+            renderer.setAnimationLoop(
+                () => {
+
+                    const elapsed =
+                        clock.getElapsedTime();
+
+
+                    /*
+                     * Entrada suave.
+                     */
+
+                    if (
+                        modelRoot.visible &&
+                        currentScale < 1
+                    ) {
+
+                        currentScale +=
+                            0.035;
+
+                        if (
+                            currentScale > 1
+                        ) {
+                            currentScale = 1;
+                        }
+
+                        const eased =
+                            1 -
+                            Math.pow(
+                                1 - currentScale,
+                                3
+                            );
+
+
+                        modelRoot.scale.set(
+                            eased,
+                            eased,
+                            eased
+                        );
+
+                    }
+
+
+                    /*
+                     * Giro 3D.
+                     */
+
+                    if (
+                        modelRoot.visible
+                    ) {
+
+                        modelRoot.rotation.y =
+                            elapsed * 0.8;
+
+
+                        /*
+                         * Flotación.
+                         */
+
+                        modelRoot.position.y =
+                            0.05 +
+                            Math.sin(
+                                elapsed * 2.0
+                            ) * 0.035;
+
+                    }
+
+
+                    renderer.render(
+                        scene,
+                        camera
+                    );
+
+                }
+            );
+
+        }
+        catch (error) {
+
+            console.error(
+                "GRTEC AR ERROR:",
+                error
+            );
+
+
+            loading.innerHTML =
+                "❌ No se pudo iniciar la cámara.<br><br>" +
+                error.message;
+
+        }
+
+    }
+
+
+    startAR();
+
+</script>
+
+</body>
+</html>
